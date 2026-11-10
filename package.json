@@ -16,8 +16,7 @@
   "build": {
     "appId": "co.regalos.tienda",
     "productName": "Tienda Regalos",
-    "files": ["dist/**", "electron/**", "package.json"],
-    "extraFiles": [{ "from": ".env.example", "to": ".env" }],
+    "files": ["dist/**", "electron/**", "package.json", ".env"],
     "win": { "target": "nsis" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true }
   }

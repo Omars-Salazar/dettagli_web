@@ -15,10 +15,11 @@ out/
 *.db
 *.sqlite
 *.sqlite3
-*.sql
 *.dump
 *.bak
 *.backup
+respaldo*.sql
+backup*.sql
 
 # Private keys and certificates
 *.pem

@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-// En desarrollo lee .env de la raíz; instalado, lee el .env junto al .exe
-require('dotenv').config({ path: app.isPackaged ? path.join(path.dirname(process.execPath), '.env') : path.join(__dirname, '..', '.env') });
+// En desarrollo lo lee de la raíz; empaquetado queda dentro de app.asar.
+require('dotenv').config({ path: path.join(app.getAppPath(), '.env') });
 const { register } = require('./backend.cjs');
 
 function createWindow() {

@@ -29,25 +29,27 @@ export default function Inventario({ notify }) {
         <button onClick={() => setF(vacio)}>Nuevo producto</button>
       </div>
 
-      <table>
-        <thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th className="n">Costo</th><th className="n">Precio</th><th className="n">Stock</th><th></th></tr></thead>
-        <tbody>
-          {rows.map((p) => (
-            <tr key={p.id_producto}>
-              <td>{p.sku}</td><td>{p.nombre}</td><td>{p.categoria}</td>
-              <td className="n">{money(p.costo)}</td><td className="n">{money(p.precio_venta)}</td>
-              <td className="n"><span className={`pill ${p.stock_actual <= p.stock_minimo ? 'bad' : ''}`}>{p.stock_actual}</span></td>
-              <td className="acts">
-                <button className="ghost" onClick={() => setF({ ...p, id_categoria: p.id_categoria ?? '', sku: p.sku ?? '' })}>Editar</button>
-                <button className="ghost" onClick={() => setS({ id: p.id_producto, nombre: p.nombre, tipo: 'entrada', cantidad: '', motivo: '' })}>Stock</button>
-                <button className="ghost" onClick={async () => setH({ nombre: p.nombre, movs: await call('prod:movs', { id: p.id_producto }) })}>Historial</button>
-                <button className="ghost" onClick={() => run('prod:activo', { id: p.id_producto, activo: off ? 1 : 0 }, off ? 'Producto reactivado' : 'Producto desactivado')}>{off ? 'Reactivar' : 'Desactivar'}</button>
-              </td>
-            </tr>
-          ))}
-          {!rows.length && <tr><td colSpan="7" className="empty">No hay productos con ese filtro. Usa "Nuevo producto" para agregar el primero.</td></tr>}
-        </tbody>
-      </table>
+      <div className="table-scroll">
+        <table>
+          <thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th className="n">Costo</th><th className="n">Precio</th><th className="n">Stock</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.id_producto}>
+                <td>{p.sku}</td><td>{p.nombre}</td><td>{p.categoria}</td>
+                <td className="n">{money(p.costo)}</td><td className="n">{money(p.precio_venta)}</td>
+                <td className="n"><span className={`pill ${p.stock_actual <= p.stock_minimo ? 'bad' : ''}`}>{p.stock_actual}</span></td>
+                <td className="acts">
+                  <button className="ghost" onClick={() => setF({ ...p, id_categoria: p.id_categoria ?? '', sku: p.sku ?? '' })}>Editar</button>
+                  <button className="ghost" onClick={() => setS({ id: p.id_producto, nombre: p.nombre, tipo: 'entrada', cantidad: '', motivo: '' })}>Stock</button>
+                  <button className="ghost" onClick={async () => setH({ nombre: p.nombre, movs: await call('prod:movs', { id: p.id_producto }) })}>Historial</button>
+                  <button className="ghost" onClick={() => run('prod:activo', { id: p.id_producto, activo: off ? 1 : 0 }, off ? 'Producto reactivado' : 'Producto desactivado')}>{off ? 'Reactivar' : 'Desactivar'}</button>
+                </td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan="7" className="empty">No hay productos con ese filtro. Usa "Nuevo producto" para agregar el primero.</td></tr>}
+          </tbody>
+        </table>
+      </div>
 
       {f && (
         <Modal title={f.id_producto ? 'Editar producto' : 'Nuevo producto'} onClose={() => setF(null)}>
@@ -56,8 +58,8 @@ export default function Inventario({ notify }) {
             <label>SKU (opcional)<input value={f.sku} onChange={set('sku')} /></label>
             <label>Categoría<Cat value={f.id_categoria} onChange={(v) => setF({ ...f, id_categoria: v })} /></label>
             <div className="grid">
-              <label>Costo<input type="number" min="0" value={f.costo} onChange={set('costo')} /></label>
-              <label>Precio de venta<input type="number" min="0" value={f.precio_venta} onChange={set('precio_venta')} /></label>
+              <label>Costo<input type="number" min="0" step="0.01" value={f.costo} onChange={set('costo')} /></label>
+              <label>Precio de venta<input type="number" min="0" step="0.01" value={f.precio_venta} onChange={set('precio_venta')} /></label>
               <label>Stock mínimo<input type="number" min="0" value={f.stock_minimo} onChange={set('stock_minimo')} /></label>
               {!f.id_producto && <label>Stock inicial<input type="number" min="0" value={f.stock_inicial} onChange={set('stock_inicial')} /></label>}
             </div>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { call } from './lib';
+import Clientes from './pages/Clientes';
 import Inventario from './pages/Inventario';
 import Pedidos from './pages/Pedidos';
+import Reportes from './pages/Reportes';
 
 export default function App() {
   const [page, setPage] = useState('inv');
@@ -15,10 +17,15 @@ export default function App() {
         <h1>Regalos</h1>
         <button className={page === 'inv' ? 'on' : ''} onClick={() => setPage('inv')}>Inventario</button>
         <button className={page === 'ped' ? 'on' : ''} onClick={() => setPage('ped')}>Pedidos</button>
+        <button className={page === 'cli' ? 'on' : ''} onClick={() => setPage('cli')}>Clientes</button>
+        <button className={page === 'rep' ? 'on' : ''} onClick={() => setPage('rep')}>Reportes</button>
       </nav>
       <main>
         {err && <div className="banner">{err}</div>}
-        {page === 'inv' ? <Inventario notify={notify} /> : <Pedidos notify={notify} />}
+        {page === 'inv' && <Inventario notify={notify} />}
+        {page === 'ped' && <Pedidos notify={notify} />}
+        {page === 'cli' && <Clientes notify={notify} />}
+        {page === 'rep' && <Reportes notify={notify} />}
       </main>
       {toast && <div className={`toast ${toast.t}`}>{toast.m}</div>}
     </div>

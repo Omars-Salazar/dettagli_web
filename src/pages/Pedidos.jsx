@@ -7,6 +7,7 @@ export default function Pedidos({ notify }) {
   const [rows, setRows] = useState([]);
   const [est, setEst] = useState('');
   const [nuevo, setNuevo] = useState(false);
+  const [detailId, setDetailId] = useState(null);
   const load = () => call('ped:list', { estado: est }).then(setRows).catch((e) => notify(e.message, 'err'));
   useEffect(() => { load(); }, [est]);
 
@@ -25,26 +26,107 @@ export default function Pedidos({ notify }) {
         </select>
         <button onClick={() => setNuevo(true)}>Nuevo pedido</button>
       </div>
-      <table>
-        <thead><tr><th>N.°</th><th>Cliente</th><th>Entrega</th><th>Estado</th><th className="n">Total</th><th className="n">Saldo</th></tr></thead>
-        <tbody>
-          {rows.map((p) => (
-            <tr key={p.id_pedido}>
-              <td>{p.id_pedido}</td><td>{p.cliente}</td><td>{p.fecha_entrega ?? 'Sin fecha'}</td>
-              <td>
-                <select className={`est ${p.estado}`} value={p.estado} disabled={p.estado === 'cancelado'} onChange={(e) => cambiar(p.id_pedido, e.target.value)}>
-                  {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </td>
-              <td className="n">{money(p.total)}</td>
-              <td className="n">{p.estado === 'cancelado' ? '—' : money(p.total - p.pagado)}</td>
-            </tr>
-          ))}
-          {!rows.length && <tr><td colSpan="6" className="empty">Aún no hay pedidos. Usa "Nuevo pedido" para registrar el primero.</td></tr>}
-        </tbody>
-      </table>
+      <div className="table-scroll">
+        <table>
+          <thead><tr><th>N.°</th><th>Cliente</th><th>Entrega</th><th>Estado</th><th className="n">Total</th><th className="n">Saldo</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.id_pedido}>
+                <td>{p.id_pedido}</td><td>{p.cliente}</td><td>{p.fecha_entrega ?? 'Sin fecha'}</td>
+                <td>
+                  <select className={`est ${p.estado}`} value={p.estado} disabled={p.estado === 'cancelado'} onChange={(e) => cambiar(p.id_pedido, e.target.value)}>
+                    {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </td>
+                <td className="n">{money(p.total)}</td>
+                <td className="n">{p.estado === 'cancelado' ? '—' : money(p.total - p.pagado)}</td>
+                <td className="acts"><button className="ghost" onClick={() => setDetailId(p.id_pedido)}>Ver detalle</button></td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan="7" className="empty">Aún no hay pedidos. Usa "Nuevo pedido" para registrar el primero.</td></tr>}
+          </tbody>
+        </table>
+      </div>
       {nuevo && <Nuevo notify={notify} onClose={() => setNuevo(false)} onSaved={() => { setNuevo(false); notify('Pedido registrado'); load(); }} />}
+      {detailId && <Detalle id={detailId} notify={notify} onClose={() => setDetailId(null)} onUpdated={load} />}
     </>
+  );
+}
+
+function Detalle({ id, notify, onClose, onUpdated }) {
+  const [data, setData] = useState(null);
+  const [monto, setMonto] = useState('');
+  const [metodo, setMetodo] = useState('efectivo');
+  const [saving, setSaving] = useState(false);
+  const load = () => call('ped:detail', { id }).then(setData).catch((e) => notify(e.message, 'err'));
+  useEffect(() => { load(); }, [id]);
+
+  const abonar = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await call('ped:pay', { id, monto, metodo });
+      notify('Abono registrado');
+      setMonto('');
+      await load();
+      onUpdated();
+    } catch (err) { notify(err.message, 'err'); }
+    finally { setSaving(false); }
+  };
+
+  if (!data) return <Modal title={`Pedido #${id}`} onClose={onClose}><p className="muted">Cargando detalle del pedido…</p></Modal>;
+  const { pedido, items, pagos } = data;
+  const saldo = pedido.estado === 'cancelado' ? null : Math.max(0, pedido.total - pedido.pagado);
+  return (
+    <Modal title={`Pedido #${pedido.id_pedido}`} wide onClose={onClose}>
+      <div className="order-summary">
+        <div><span>Cliente</span><strong>{pedido.cliente}</strong></div>
+        <div><span>Teléfono</span><strong>{pedido.telefono_cliente || '—'}</strong></div>
+        <div><span>Fecha del pedido</span><strong>{pedido.fecha_pedido}</strong></div>
+        <div><span>Entrega</span><strong>{pedido.fecha_entrega || 'Sin fecha'}</strong></div>
+        <div><span>Estado</span><strong className={`status ${pedido.estado}`}>{ESTADOS[pedido.estado]}</strong></div>
+        <div><span>Dirección</span><strong>{pedido.direccion_entrega || '—'}</strong></div>
+        {pedido.dedicatoria && <div className="order-summary-wide"><span>Dedicatoria</span><strong>{pedido.dedicatoria}</strong></div>}
+        {pedido.notas && <div className="order-summary-wide"><span>Notas</span><strong>{pedido.notas}</strong></div>}
+      </div>
+
+      <h3 className="section-title">Productos</h3>
+      <div className="table-scroll">
+        <table>
+          <thead><tr><th>Producto</th><th>SKU</th><th className="n">Cantidad</th><th className="n">Precio</th><th className="n">Subtotal</th></tr></thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id_detalle}><td>{item.producto}</td><td>{item.sku || '—'}</td><td className="n">{item.cantidad}</td><td className="n">{money(item.precio_unitario)}</td><td className="n">{money(item.subtotal)}</td></tr>
+            ))}
+            <tr className="order-totals"><td colSpan="4">Total</td><td className="n">{money(pedido.total)}</td></tr>
+            <tr className="order-totals"><td colSpan="4">Pagado · Saldo</td><td className="n">{money(pedido.pagado)} · {saldo === null ? '—' : money(saldo)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="section-title">Abonos</h3>
+      <div className="table-scroll">
+        <table>
+          <thead><tr><th>Fecha</th><th>Método</th><th className="n">Monto</th></tr></thead>
+          <tbody>
+            {pagos.map((p) => <tr key={p.id_pago}><td>{p.fecha}</td><td>{p.metodo}</td><td className="n">{money(p.monto)}</td></tr>)}
+            {!pagos.length && <tr><td colSpan="3" className="empty">Aún no hay abonos registrados.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {pedido.estado !== 'cancelado' && saldo > 0 && (
+        <form className="payment-form" onSubmit={abonar}>
+          <label>Nuevo abono<input required type="number" min="0.01" max={saldo} step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} /></label>
+          <label>Método de pago
+            <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+              <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option>
+            </select>
+          </label>
+          <button disabled={saving}>{saving ? 'Guardando…' : 'Registrar abono'}</button>
+        </form>
+      )}
+      <footer><button type="button" className="ghost" onClick={onClose}>Cerrar</button></footer>
+    </Modal>
   );
 }
 
@@ -123,7 +205,7 @@ function Nuevo({ notify, onClose, onSaved }) {
               <tr key={i.id_producto}>
                 <td>{i.nombre}</td>
                 <td className="n"><input type="number" min="1" value={i.cantidad} onChange={(e) => upd(i.id_producto, 'cantidad', e.target.value)} /></td>
-                <td className="n"><input type="number" min="0" value={i.precio_unitario} onChange={(e) => upd(i.id_producto, 'precio_unitario', e.target.value)} /></td>
+                <td className="n"><input type="number" min="0" step="0.01" value={i.precio_unitario} onChange={(e) => upd(i.id_producto, 'precio_unitario', e.target.value)} /></td>
                 <td className="n">{money(i.cantidad * i.precio_unitario)}</td>
                 <td><button type="button" className="ghost" onClick={() => setItems(items.filter((x) => x !== i))}>Quitar</button></td>
               </tr>
@@ -133,7 +215,7 @@ function Nuevo({ notify, onClose, onSaved }) {
         </table>
 
         <div className="grid">
-          <label>Anticipo<input type="number" min="0" value={f.anticipo} onChange={set('anticipo')} /></label>
+          <label>Anticipo<input type="number" min="0" step="0.01" value={f.anticipo} onChange={set('anticipo')} /></label>
           <label>Método de pago
             <select value={f.metodo} onChange={set('metodo')}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select>
           </label>
